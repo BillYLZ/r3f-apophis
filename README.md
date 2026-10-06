@@ -1,17 +1,16 @@
 # r3f-apophis
 
 <p align="center">
-  <a href="https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m"><img alt="Canlı demoyu aç" src="https://img.shields.io/badge/%E2%96%B6%20CANLI%20DEMO-A%C3%A7-ff9b42?style=for-the-badge"></a>
+  <a href="https://billylz.github.io/r3f-apophis/"><img alt="Canlı demoyu aç" src="https://img.shields.io/badge/%E2%96%B6%20CANLI%20DEMO-A%C3%A7-ff9b42?style=for-the-badge"></a>
 </p>
 
-<p align="center"><b>Demo:</b> <a href="https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m">https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m</a></p>
+<p align="center"><b>Demo:</b> <a href="https://billylz.github.io/r3f-apophis/">https://billylz.github.io/r3f-apophis/</a></p>
 
 **99942 Apophis**'in 13 Nisan 2029'da Dünya'ya yakın geçişinin, yörünge mekaniği denklemleriyle hesaplanan, parametreleri değiştirilebilen gerçek zamanlı 3B simülasyonu (React Three Fiber).
 
 ## Demo
 
-- **▶ [Demoyu aç (claude.ai)](https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m)** — derlenmiş uygulamanın tamamı, tarayıcıda kurulum gerektirmeden çalışır. Bağlantı sahibi paylaşana kadar özeldir (sayfadaki **Share** menüsünden herkese açılabilir).
-- **GitHub Pages:** [billylz.github.io/r3f-apophis](https://billylz.github.io/r3f-apophis/) — depo herkese açık yapıldıktan ve Pages etkinleştirildikten sonra çalışır (bkz. [Demo yayını](#demo-yayını-github-pages)).
+**▶ https://billylz.github.io/r3f-apophis/**: tarayıcıda kurulum gerektirmeden çalışır. Her push'ta GitHub Actions ile otomatik güncellenir.
 
 ## Ekran görüntüleri
 
@@ -136,10 +135,6 @@ Başlangıç durumu yakın geçiş anında (2029-04-13 21:46 UTC) kurulur, orada
 
 `.github/workflows/pages.yml` her push'ta testleri çalıştırır ve projeyi derler. Varsayılan dala yapılan push'larda `dist/` klasörünü GitHub Pages'e yayınlar.
 
-Pages'in çalışması için:
-
-1. **Depo herkese açık olmalı** (Settings → General → Danger Zone → Change visibility → Public). Ücretsiz GitHub hesaplarında Pages gizli depolarda çalışmaz; gizli depo için GitHub Pro gerekir.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions** seçilmeli.
-3. Actions sekmesinde son çalıştırmada **Re-run jobs**.
+Bu depoyu fork'layıp kendi demonu yayınlamak için: depo herkese açık olmalı ve **Settings → Pages → Source: GitHub Actions** seçilmeli.
 
 Dünya dokusu: NASA Blue Marble (kamu malı).
