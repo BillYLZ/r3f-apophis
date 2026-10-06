@@ -1,22 +1,21 @@
 import { Canvas } from '@react-three/fiber'
-import { Suspense } from 'react'
 import { GeoScene } from './scene/GeoScene.tsx'
 import { HelioScene } from './scene/HelioScene.tsx'
 import { useSim } from './store.ts'
 import { Controls, SimClock } from './ui/Controls.tsx'
-import { Equations } from './ui/Equations.tsx'
 import { Hud } from './ui/Hud.tsx'
+import { SidePanel } from './ui/SidePanel.tsx'
 
 export default function App() {
   const view = useSim((s) => s.view)
   return (
     <>
-      <Canvas camera={{ fov: 45, near: 0.01, far: 2000 }} dpr={[1, 2]}>
+      <Canvas camera={{ fov: 45, near: 0.005, far: 2000 }} dpr={[1, 2]}>
         <SimClock />
-        <Suspense fallback={null}>{view === 'helio' ? <HelioScene key="helio" /> : <GeoScene key="geo" />}</Suspense>
+        {view === 'helio' ? <HelioScene key="helio" /> : <GeoScene key="geo" />}
       </Canvas>
       <Hud />
-      <Equations />
+      <SidePanel />
       <Controls />
       <div className="legend">
         {view === 'helio' ? (
@@ -32,7 +31,7 @@ export default function App() {
             <span className="sw" style={{ background: '#8a8f9c' }} /> Ay yörüngesi
           </>
         )}
-        <span className="dim"> · Cisim boyutları büyütülmüştür</span>
+        <span className="dim"> · Cisim boyutları büyütülmüştür · Fare: döndür / yakınlaştır</span>
       </div>
     </>
   )

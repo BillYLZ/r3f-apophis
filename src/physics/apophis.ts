@@ -3,9 +3,12 @@ import {
   CLOSE_APPROACH_KM,
   AU_KM,
   DEG,
+  EARTH_RADIUS_KM,
+  KM_S_PER_AU_DAY,
   MU_EARTH,
   MU_SUN,
 } from './constants.ts'
+import { subPoint } from './earthRotation.ts'
 import { earthState } from './ephemeris.ts'
 import { integrate } from './integrator.ts'
 import { type Elements, type State, elementsToState, stateToElements, trueToMean } from './kepler.ts'
@@ -31,40 +34,65 @@ export const preFlybyElements: Elements = {
   M: trueToMean(-PRE_PERI, PRE_E), // u = ω + ν = 0 → düğümde
 }
 
-/**
- * Çarpma parametresi yönü: v∞'a dik düzlemde açı. Bu açı, geçiş sonrası
- * elemanların JPL tahminine (a ≈ 1,10 AU, e ≈ 0,19, i ≈ 2,2°; Apollo sınıfı) yakın çıkacağı
- * biçimde ayarlandı — asteroid Dünya'nın arkasından geçerek enerji kazanır.
- */
-export const IMPACT_ANGLE = 276 * DEG
+/** Kullanıcının değiştirebileceği senaryo parametreleri. */
+export interface FlybyParams {
+  /** Dünya merkezinden en yakın geçiş mesafesi [km] (iki cisim hiperbolünün yerberisi) */
+  rpKm: number
+  /** Sonsuzdaki göreli hız v∞ [km/s] */
+  vInfKmS: number
+  /**
+   * Çarpma parametresi yönü: v∞'a dik düzlemde açı [derece]. Varsayılan değer,
+   * geçiş sonrası elemanların JPL tahminine (a ≈ 1,10 AU, e ≈ 0,19, i ≈ 2,2°;
+   * Apollo sınıfı) yakın çıkacağı biçimde ayarlandı — asteroit Dünya'nın
+   * arkasından geçerek enerji kazanır.
+   */
+  impactAngleDeg: number
+  /** Dünya kütlesi çarpanı (0 = Dünya çekimi yok) */
+  earthMassFactor: number
+}
+
+/** Kepler yörüngelerinden çıkan doğal v∞ (Apophis − Dünya hız farkı). */
+function naturalVInf() {
+  const earth = earthState(CLOSE_APPROACH_JD)
+  const ast = elementsToState(preFlybyElements, MU_SUN)
+  return sub(ast.v, earth.v)
+}
+
+export const DEFAULT_PARAMS: FlybyParams = {
+  rpKm: CLOSE_APPROACH_KM,
+  vInfKmS: Math.round(norm(naturalVInf()) * KM_S_PER_AU_DAY * 100) / 100,
+  impactAngleDeg: 276,
+  earthMassFactor: 1,
+}
 
 export interface FlybyGeometry {
+  muEarth: number // [AU³/gün²]
   vInf: number // [AU/gün]
   rp: number // [AU]
   vp: number // [AU/gün]
-  e: number // hiperbolik dışmerkezlik
+  e: number // hiperbolik dışmerkezlik (μ⊕ = 0 ise ∞)
   deflection: number // sapma açısı δ [rad]
   stateAtPerigee: State // güneş merkezli
 }
 
 /** İki cisim (Dünya–Apophis) hiperbolik geçiş geometrisi. */
-export function flybyGeometry(impactAngle = IMPACT_ANGLE): FlybyGeometry {
+export function flybyGeometry(params: FlybyParams = DEFAULT_PARAMS): FlybyGeometry {
   const jd = CLOSE_APPROACH_JD
   const earth = earthState(jd)
-  const ast = elementsToState(preFlybyElements, MU_SUN)
-  const vInfVec = sub(ast.v, earth.v)
-  const vInf = norm(vInfVec)
-  const rp = CLOSE_APPROACH_KM / AU_KM
-  const e = 1 + (rp * vInf * vInf) / MU_EARTH
-  const vp = Math.sqrt(vInf * vInf + (2 * MU_EARTH) / rp)
+  const muEarth = MU_EARTH * params.earthMassFactor
+  const vh = unit(naturalVInf())
+  const vInf = params.vInfKmS / KM_S_PER_AU_DAY
+  const rp = params.rpKm / AU_KM
+  const e = muEarth > 0 ? 1 + (rp * vInf * vInf) / muEarth : Infinity
+  const vp = Math.sqrt(vInf * vInf + (2 * muEarth) / rp)
   const deflection = 2 * Math.asin(1 / e)
 
   // Çarpma parametresi yönü b̂ ⊥ v̂∞: b1 ekliptik kuzeyine en yakın, b2 = v̂∞ × b1
-  const vh = unit(vInfVec)
+  const angle = params.impactAngleDeg * DEG
   const z: Vec3 = [0, 0, 1]
   const b1 = unit(sub(z, scale(vh, dot(z, vh))))
   const b2 = cross(vh, b1)
-  const bHat = add(scale(b1, Math.cos(impactAngle)), scale(b2, Math.sin(impactAngle)))
+  const bHat = add(scale(b1, Math.cos(angle)), scale(b2, Math.sin(angle)))
 
   // Yerberi, asimptotların açıortayında: r̂p = sin(δ/2)·v̂∞ + cos(δ/2)·b̂,
   // yerberi hızı ona dik: v̂p = cos(δ/2)·v̂∞ − sin(δ/2)·b̂
@@ -73,6 +101,7 @@ export function flybyGeometry(impactAngle = IMPACT_ANGLE): FlybyGeometry {
   const vRel = scale(sub(scale(vh, c), scale(bHat, s)), vp)
 
   return {
+    muEarth,
     vInf,
     rp,
     vp,
@@ -83,7 +112,7 @@ export function flybyGeometry(impactAngle = IMPACT_ANGLE): FlybyGeometry {
 }
 
 /** Güneş + Dünya çekimi altında Apophis'in hareket denklemi (güneş merkezli). */
-function derivative(t: number, y: Float64Array): Float64Array {
+const makeDerivative = (muEarth: number) => (t: number, y: Float64Array): Float64Array => {
   const e = earthState(t).r
   const rx = y[0], ry = y[1], rz = y[2]
   const r3 = (rx * rx + ry * ry + rz * rz) ** 1.5
@@ -95,10 +124,18 @@ function derivative(t: number, y: Float64Array): Float64Array {
   out[1] = y[4]
   out[2] = y[5]
   // r̈ = −μ☉ r/|r|³ − μ⊕ (r − r⊕)/|r − r⊕|³ − μ⊕ r⊕/|r⊕|³ (dolaylı terim)
-  out[3] = -MU_SUN * rx / r3 - MU_EARTH * (dx / d3 + e[0] / e3)
-  out[4] = -MU_SUN * ry / r3 - MU_EARTH * (dy / d3 + e[1] / e3)
-  out[5] = -MU_SUN * rz / r3 - MU_EARTH * (dz / d3 + e[2] / e3)
+  out[3] = -MU_SUN * rx / r3 - muEarth * (dx / d3 + e[0] / e3)
+  out[4] = -MU_SUN * ry / r3 - muEarth * (dy / d3 + e[1] / e3)
+  out[5] = -MU_SUN * rz / r3 - muEarth * (dz / d3 + e[2] / e3)
   return out
+}
+
+export interface Impact {
+  jd: number
+  lat: number
+  lon: number
+  /** Yüzeye çarpma anındaki göreli hız [km/s] */
+  speedKmS: number
 }
 
 export interface Trajectory {
@@ -107,42 +144,88 @@ export interface Trajectory {
   s: Float64Array
   start: number
   end: number
+  params: FlybyParams
   flyby: FlybyGeometry
+  /** Dünya yüzeyine çarpma (varsa yörünge bu anda biter) */
+  impact: Impact | null
 }
 
 function maxStep(t: number, y: Float64Array) {
   const e = earthState(t).r
   const d = Math.hypot(y[0] - e[0], y[1] - e[1], y[2] - e[2])
-  return Math.min(2, Math.max(0.0005, d * 5))
+  return Math.min(2, Math.max(0.0002, d * 5))
 }
 
+const EARTH_RADIUS_AU = EARTH_RADIUS_KM / AU_KM
+
 /** Yakın geçiş anından geriye ve ileriye sayısal entegrasyon. */
-export function buildTrajectory(yearsBefore = 4, yearsAfter = 7, impactAngle = IMPACT_ANGLE): Trajectory {
-  const flyby = flybyGeometry(impactAngle)
+export function buildTrajectory(params: FlybyParams = DEFAULT_PARAMS, yearsBefore = 5.5, yearsAfter = 7): Trajectory {
+  const flyby = flybyGeometry(params)
+  const f = makeDerivative(flyby.muEarth)
   const t0 = CLOSE_APPROACH_JD
   const y0 = Float64Array.from([...flyby.stateAtPerigee.r, ...flyby.stateAtPerigee.v])
   const back: { t: number; y: Float64Array }[] = []
   const fwd: { t: number; y: Float64Array }[] = []
-  integrate(derivative, t0, y0, t0 - yearsBefore * 365.25, {
+  integrate(f, t0, y0, t0 - yearsBefore * 365.25, {
     maxStep,
     onStep: (t, y) => back.push({ t, y: Float64Array.from(y) }),
   })
-  integrate(derivative, t0, y0, t0 + yearsAfter * 365.25, {
-    maxStep,
-    onStep: (t, y) => fwd.push({ t, y: Float64Array.from(y) }),
-  })
-  const all = [...back.reverse(), ...fwd.slice(1)]
+  back.reverse()
+
+  // Yerberi Dünya'nın içindeyse: geçmişten gelirken yüzeye ilk değdiği an çarpmadır.
+  let impact: Impact | null = null
+  let all = back
+  if (params.rpKm <= EARTH_RADIUS_KM) {
+    const inside = (p: { t: number; y: Float64Array }) => {
+      const e = earthState(p.t).r
+      return Math.hypot(p.y[0] - e[0], p.y[1] - e[1], p.y[2] - e[2]) <= EARTH_RADIUS_AU
+    }
+    const k = Math.max(1, back.findIndex(inside))
+    // Yüzeyi iki adım arasında ikiye bölme ile bul
+    let lo = back[k - 1].t, hi = back[k].t
+    const tmp = { t: 0, y: new Float64Array(6) }
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + hi) / 2
+      const st = hermite(back[k - 1], back[k], mid)
+      tmp.t = mid
+      tmp.y.set([...st.r, ...st.v])
+      if (inside(tmp)) hi = mid
+      else lo = mid
+    }
+    const hit = hermite(back[k - 1], back[k], hi)
+    all = [...back.slice(0, k), { t: hi, y: Float64Array.from([...hit.r, ...hit.v]) }]
+    const earthHit = earthState(hi)
+    const sp = subPoint(sub(hit.r, earthHit.r), hi)
+    impact = { jd: hi, ...sp, speedKmS: norm(sub(hit.v, earthHit.v)) * KM_S_PER_AU_DAY }
+  } else {
+    integrate(f, t0, y0, t0 + yearsAfter * 365.25, {
+      maxStep,
+      onStep: (t, y) => fwd.push({ t, y: Float64Array.from(y) }),
+    })
+    all = [...back, ...fwd.slice(1)]
+  }
+
   const t = new Float64Array(all.length)
   const s = new Float64Array(all.length * 6)
   all.forEach((p, k) => {
     t[k] = p.t
     s.set(p.y, k * 6)
   })
-  return { t, s, start: t[0], end: t[t.length - 1], flyby }
+  return { t, s, start: t[0], end: t[t.length - 1], params, flyby, impact }
+}
+
+function hermite(a: { t: number; y: Float64Array }, b: { t: number; y: Float64Array }, jd: number): State {
+  const tr = {
+    t: Float64Array.of(a.t, b.t),
+    s: Float64Array.from([...a.y, ...b.y]),
+    start: a.t,
+    end: b.t,
+  } as Trajectory
+  return sampleTrajectory(tr, jd)
 }
 
 /** Kübik Hermite enterpolasyonu ile t anındaki durum. */
-export function sampleTrajectory(tr: Trajectory, jd: number): State {
+export function sampleTrajectory(tr: Pick<Trajectory, 't' | 's' | 'start' | 'end'>, jd: number): State {
   const { t, s } = tr
   jd = Math.min(Math.max(jd, tr.start), tr.end)
   let lo = 0, hi = t.length - 1

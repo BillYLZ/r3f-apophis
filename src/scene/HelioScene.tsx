@@ -2,14 +2,14 @@ import { Line, OrbitControls, Stars } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { sampleTrajectory, osculating } from '../physics/apophis.ts'
+import { osculating, sampleTrajectory } from '../physics/apophis.ts'
 import { CLOSE_APPROACH_JD } from '../physics/constants.ts'
 import { earthElements, earthState } from '../physics/ephemeris.ts'
 import { orbitPoints } from '../physics/kepler.ts'
 import { useSim } from '../store.ts'
-import { trajectory } from '../trajectory.ts'
 import { toThree } from './coords.ts'
 import { Label } from './Label.tsx'
+import { useFollow } from './useFollow.ts'
 
 /** 1 AU = 10 sahne birimi */
 const S = 10
@@ -22,9 +22,18 @@ export function HelioScene() {
     camera.lookAt(0, 0, 0)
   }, [camera])
 
+  const trajectory = useSim((s) => s.trajectory)
   const earthOrbit = useMemo(() => orbitPoints(earthElements(CLOSE_APPROACH_JD)).map((p) => toThree(p, S)), [])
-  const preOrbit = useMemo(() => orbitPoints(osculating(trajectory, CLOSE_APPROACH_JD - 60)).map((p) => toThree(p, S)), [])
-  const postOrbit = useMemo(() => orbitPoints(osculating(trajectory, CLOSE_APPROACH_JD + 60)).map((p) => toThree(p, S)), [])
+  const preOrbit = useMemo(
+    () => orbitPoints(osculating(trajectory, CLOSE_APPROACH_JD - 60)).map((p) => toThree(p, S)),
+    [trajectory],
+  )
+  const postOrbit = useMemo(() => {
+    if (trajectory.impact) return null
+    const el = osculating(trajectory, CLOSE_APPROACH_JD + 60)
+    // Hiperbolik (Güneş'ten kaçış) yörünge elips olarak çizilemez
+    return el.e < 1 ? orbitPoints(el).map((p) => toThree(p, S)) : null
+  }, [trajectory])
 
   const earthRef = useRef<THREE.Group>(null)
   const apoRef = useRef<THREE.Group>(null)
@@ -34,21 +43,24 @@ export function HelioScene() {
     return g
   }, [])
   const tmp = useMemo(() => new THREE.Vector3(), [])
+  const origin = useMemo(() => new THREE.Vector3(), [])
+  const follow = useFollow({ sun: 31, earth: 3, apophis: 3 })
 
   useFrame(() => {
-    const jd = useSim.getState().jd
+    const { jd, trajectory: tr, follow: target } = useSim.getState()
     toThree(earthState(jd).r, S, earthRef.current!.position)
-    toThree(sampleTrajectory(trajectory, jd).r, S, apoRef.current!.position)
+    toThree(sampleTrajectory(tr, jd).r, S, apoRef.current!.position)
+    follow(target === 'earth' ? earthRef.current!.position : target === 'apophis' ? apoRef.current!.position : origin)
 
     // Son TRAIL_DAYS günün izi, 1 günlük adımlarla + anlık konum
     const pos = trail.attributes.position as THREE.BufferAttribute
-    const first = Math.max(trajectory.start, jd - TRAIL_DAYS)
+    const first = Math.max(tr.start, jd - TRAIL_DAYS)
     let n = 0
     for (let t = Math.ceil(first); t < jd && n <= TRAIL_DAYS; t++, n++) {
-      toThree(sampleTrajectory(trajectory, t).r, S, tmp)
+      toThree(sampleTrajectory(tr, t).r, S, tmp)
       pos.setXYZ(n, tmp.x, tmp.y, tmp.z)
     }
-    toThree(sampleTrajectory(trajectory, jd).r, S, tmp)
+    toThree(sampleTrajectory(tr, jd).r, S, tmp)
     pos.setXYZ(n++, tmp.x, tmp.y, tmp.z)
     pos.needsUpdate = true
     trail.setDrawRange(0, n)
@@ -56,7 +68,7 @@ export function HelioScene() {
 
   return (
     <>
-      <OrbitControls makeDefault enableDamping minDistance={1} maxDistance={80} />
+      <OrbitControls makeDefault enableDamping minDistance={0.3} maxDistance={80} />
       <color attach="background" args={['#03040a']} />
       <Stars radius={200} depth={60} count={4000} factor={4} fade />
       <ambientLight intensity={0.15} />
@@ -72,7 +84,7 @@ export function HelioScene() {
 
       <Line points={earthOrbit} color="#3d8bff" lineWidth={1.2} />
       <Line points={preOrbit} color="#ff9b42" lineWidth={1} dashed dashSize={0.25} gapSize={0.15} />
-      <Line points={postOrbit} color="#42e6c8" lineWidth={1} dashed dashSize={0.25} gapSize={0.15} />
+      {postOrbit && <Line points={postOrbit} color="#42e6c8" lineWidth={1} dashed dashSize={0.25} gapSize={0.15} />}
 
       <line>
         <primitive object={trail} attach="geometry" />
