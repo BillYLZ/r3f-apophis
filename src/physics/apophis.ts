@@ -6,10 +6,11 @@ import {
   EARTH_RADIUS_KM,
   KM_S_PER_AU_DAY,
   MU_EARTH,
+  MU_MOON,
   MU_SUN,
 } from './constants.ts'
 import { subPoint } from './earthRotation.ts'
-import { earthState } from './ephemeris.ts'
+import { earthMoonPositions, earthState, moonGeocentric } from './ephemeris.ts'
 import { integrate } from './integrator.ts'
 import { type Elements, type State, elementsToState, stateToElements, trueToMean } from './kepler.ts'
 import { type Vec3, add, cross, dot, norm, scale, sub, unit } from './vec.ts'
@@ -49,6 +50,8 @@ export interface FlybyParams {
   impactAngleDeg: number
   /** Dünya kütlesi çarpanı (0 = Dünya çekimi yok) */
   earthMassFactor: number
+  /** Ay kütlesi çarpanı (0 = Ay çekimi yok) */
+  moonMassFactor: number
 }
 
 /** Kepler yörüngelerinden çıkan doğal v∞ (Apophis − Dünya hız farkı). */
@@ -63,10 +66,12 @@ export const DEFAULT_PARAMS: FlybyParams = {
   vInfKmS: Math.round(norm(naturalVInf()) * KM_S_PER_AU_DAY * 100) / 100,
   impactAngleDeg: 276,
   earthMassFactor: 1,
+  moonMassFactor: 1,
 }
 
 export interface FlybyGeometry {
   muEarth: number // [AU³/gün²]
+  muMoon: number // [AU³/gün²]
   vInf: number // [AU/gün]
   rp: number // [AU]
   vp: number // [AU/gün]
@@ -102,6 +107,7 @@ export function flybyGeometry(params: FlybyParams = DEFAULT_PARAMS): FlybyGeomet
 
   return {
     muEarth,
+    muMoon: MU_MOON * params.moonMassFactor,
     vInf,
     rp,
     vp,
@@ -111,22 +117,33 @@ export function flybyGeometry(params: FlybyParams = DEFAULT_PARAMS): FlybyGeomet
   }
 }
 
-/** Güneş + Dünya çekimi altında Apophis'in hareket denklemi (güneş merkezli). */
-const makeDerivative = (muEarth: number) => (t: number, y: Float64Array): Float64Array => {
-  const e = earthState(t).r
+/**
+ * Güneş + Dünya + Ay çekimi altında Apophis'in hareket denklemi (güneş merkezli).
+ * Her cisim k için doğrudan terim −μk (r − rk)/|r − rk|³ ve Güneş'in o cisim
+ * tarafından ivmelendirilmesinden gelen dolaylı terim −μk rk/|rk|³.
+ */
+const makeDerivative = (muEarth: number, muMoon: number) => (t: number, y: Float64Array): Float64Array => {
+  const { earth, moon } = earthMoonPositions(t)
   const rx = y[0], ry = y[1], rz = y[2]
   const r3 = (rx * rx + ry * ry + rz * rz) ** 1.5
-  const dx = rx - e[0], dy = ry - e[1], dz = rz - e[2]
-  const d3 = (dx * dx + dy * dy + dz * dz) ** 1.5
-  const e3 = (e[0] * e[0] + e[1] * e[1] + e[2] * e[2]) ** 1.5
   const out = new Float64Array(6)
   out[0] = y[3]
   out[1] = y[4]
   out[2] = y[5]
-  // r̈ = −μ☉ r/|r|³ − μ⊕ (r − r⊕)/|r − r⊕|³ − μ⊕ r⊕/|r⊕|³ (dolaylı terim)
-  out[3] = -MU_SUN * rx / r3 - muEarth * (dx / d3 + e[0] / e3)
-  out[4] = -MU_SUN * ry / r3 - muEarth * (dy / d3 + e[1] / e3)
-  out[5] = -MU_SUN * rz / r3 - muEarth * (dz / d3 + e[2] / e3)
+  out[3] = (-MU_SUN * rx) / r3
+  out[4] = (-MU_SUN * ry) / r3
+  out[5] = (-MU_SUN * rz) / r3
+  const pull = (mu: number, b: Vec3) => {
+    if (mu === 0) return
+    const dx = rx - b[0], dy = ry - b[1], dz = rz - b[2]
+    const d3 = (dx * dx + dy * dy + dz * dz) ** 1.5
+    const b3 = (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]) ** 1.5
+    out[3] -= mu * (dx / d3 + b[0] / b3)
+    out[4] -= mu * (dy / d3 + b[1] / b3)
+    out[5] -= mu * (dz / d3 + b[2] / b3)
+  }
+  pull(muEarth, earth)
+  pull(muMoon, moon)
   return out
 }
 
@@ -150,10 +167,12 @@ export interface Trajectory {
   impact: Impact | null
 }
 
+/** Dünya'ya ya da Ay'a yaklaştıkça küçülen en büyük adım [gün]. */
 function maxStep(t: number, y: Float64Array) {
-  const e = earthState(t).r
-  const d = Math.hypot(y[0] - e[0], y[1] - e[1], y[2] - e[2])
-  return Math.min(2, Math.max(0.0002, d * 5))
+  const { earth: e, moon: m } = earthMoonPositions(t)
+  const dE = Math.hypot(y[0] - e[0], y[1] - e[1], y[2] - e[2])
+  const dM = Math.hypot(y[0] - m[0], y[1] - m[1], y[2] - m[2])
+  return Math.min(2, Math.max(0.0002, dE * 5), Math.max(0.0002, dM * 10))
 }
 
 const EARTH_RADIUS_AU = EARTH_RADIUS_KM / AU_KM
@@ -161,7 +180,7 @@ const EARTH_RADIUS_AU = EARTH_RADIUS_KM / AU_KM
 /** Yakın geçiş anından geriye ve ileriye sayısal entegrasyon. */
 export function buildTrajectory(params: FlybyParams = DEFAULT_PARAMS, yearsBefore = 5.5, yearsAfter = 7): Trajectory {
   const flyby = flybyGeometry(params)
-  const f = makeDerivative(flyby.muEarth)
+  const f = makeDerivative(flyby.muEarth, flyby.muMoon)
   const t0 = CLOSE_APPROACH_JD
   const y0 = Float64Array.from([...flyby.stateAtPerigee.r, ...flyby.stateAtPerigee.v])
   const back: { t: number; y: Float64Array }[] = []
@@ -252,4 +271,41 @@ export function sampleTrajectory(tr: Pick<Trajectory, 't' | 's' | 'start' | 'end
 /** Güneş merkezli oskülatör elemanlar (Dünya'dan uzakken anlamlı). */
 export function osculating(tr: Trajectory, jd: number): Elements {
   return stateToElements(sampleTrajectory(tr, jd), MU_SUN)
+}
+
+export interface Encounter {
+  jd: number
+  distKm: number
+}
+
+/** Verilen aralıkta bir cisme (yer merkezli konum fonksiyonu) en yakın geçiş. */
+export function closestApproach(tr: Trajectory, geocentric: (jd: number) => Vec3, t0: number, t1: number): Encounter {
+  const dist = (jd: number) => norm(sub(sub(sampleTrajectory(tr, jd).r, earthState(jd).r), geocentric(jd)))
+  t0 = Math.max(t0, tr.start)
+  t1 = Math.min(t1, tr.end)
+  let best = t0, bestD = Infinity
+  const step = 10 / 1440
+  for (let t = t0; t <= t1; t += step) {
+    const d = dist(t)
+    if (d < bestD) { bestD = d; best = t }
+  }
+  // Altın oran araması ile ince ayar
+  let a = Math.max(t0, best - step), b = Math.min(t1, best + step)
+  const g = (Math.sqrt(5) - 1) / 2
+  for (let k = 0; k < 40; k++) {
+    const c = b - g * (b - a), d = a + g * (b - a)
+    if (dist(c) < dist(d)) b = d
+    else a = c
+  }
+  const jd = (a + b) / 2
+  return { jd, distKm: dist(jd) * AU_KM }
+}
+
+/** Dünya'ya ve Ay'a en yakın geçişler (2029 geçişi civarı). */
+export function encounters(tr: Trajectory) {
+  const zero = (): Vec3 => [0, 0, 0]
+  return {
+    earth: closestApproach(tr, zero, CLOSE_APPROACH_JD - 3, CLOSE_APPROACH_JD + 3),
+    moon: closestApproach(tr, moonGeocentric, CLOSE_APPROACH_JD - 5, CLOSE_APPROACH_JD + 5),
+  }
 }

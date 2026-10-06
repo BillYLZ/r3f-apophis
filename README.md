@@ -50,9 +50,24 @@ Sayfa açıldığında görülen ekran. Simülasyon saati şu anki zamana kilitl
 
 - **Kırmızı çizgi** asteroidin yolu; Dünya yüzeyine değdiği anda biter.
 - **Kırmızı "Çarpma" işareti** dönen Dünya üzerinde çarpma noktası.
-- **Sol panel** çarpma yeri (1,3°K 0,6°B — Gine Körfezi), saati (21:38:12 UTC) ve çarpma hızı (12,64 km/s ≈ √(v∞² + 2μ⊕/R⊕)).
+- **Sol panel** çarpma yeri (1,2°K 0,5°B — Gine Körfezi), saati (21:38:12 UTC) ve çarpma hızı (12,64 km/s ≈ √(v∞² + 2μ⊕/R⊕)).
 - **Sağ panel** kaydırıcının altında "Dünya yüzeyinin altında → çarpma" uyarısı; sonuç tablosunda geçiş sonrası yörünge yerine çarpma bilgisi.
 - **Zaman çubuğu** çarpma anında biter (sağda "çarpma ▲").
+
+### 4 · Ay'ın yanından geçiş
+
+![Ay'ın yanından geçiş](docs/ay-gecisi.png)
+
+14 Nisan 2029, 14:19 UTC: Dünya'ya yakın geçişten 16,5 saat sonra Apophis bu kez Ay'ın yanından geçer. Kamera geri çekilerek Dünya–Ay sistemi bütün olarak gösterildi.
+
+- **Ortada** Dünya ve çevresindeki GEO kuşağı (bu ölçekte küçük kalır).
+- **Turuncu çizgi** Apophis'in yolu. Dünya'nın yakınında belirgin biçimde bükülür, sonra Ay'a doğru düz devam eder.
+- **Kesikli beyaz elips** Ay'ın o tarihin ±14 günündeki yolu. Ay, Meeus'un Ay teorisiyle konumlanır.
+- **Sağdaki gri küre** Ay'ın etki küresi (≈66 100 km). Bu kürenin içinde Ay'ın çekimi, Dünya'nınkine göre baskın hale gelir. Apophis kürenin içinden geçer.
+- **"Ay'a en yakın: 93 342 km"** etiketi ve kesikli çizgi, en yakın an olan 14 Nisan 14:26 UTC'de Apophis'in ve Ay'ın konumlarını birleştirir.
+- **Sol panel** Ay'a uzaklığı canlı gösterir (bu anda 93 382 km).
+
+Ay'ın çekimi geçiş sonrası yörüngenin yarı büyük eksenini yaklaşık **−151 000 km** (≈0,001 AU) değiştirir. Bu değer ⚙ Parametreler panelinde "Ay'ın etkisi" satırında görünür; "Aysız" hazır senaryosuyla da karşılaştırılabilir.
 
 ## Özellikler
 
@@ -60,8 +75,8 @@ Sayfa açıldığında görülen ekran. Simülasyon saati şu anki zamana kilitl
 - **Zaman hızı:** 1× (gerçek zaman), 60×, 600×, 3600×, 6 sa/s, 1 / 10 / 30 gün/s. İleri/geri akış, zaman çubuğunda "bugün" ve "2029" işaretleri.
 - **İki 3B görünüm:**
   - *Güneş sistemi:* Dünya yörüngesi, Apophis'in izi, geçiş öncesi (turuncu) ve sonrası (turkuaz) yörüngeler.
-  - *Dünya yakını:* Yer merkezli hiperbolik yol, GEO uydu kuşağı (35 786 km), GMST ile dönen ve Güneş'le aydınlanan Dünya, Ay.
-- **Kamera takibi:** Güneş / Dünya / Apophis'e kilitlenir. Fareyle döndür ve yakınlaştır.
+  - *Dünya yakını:* Yer merkezli hiperbolik yol, GEO uydu kuşağı (35 786 km), GMST ile dönen ve Güneş'le aydınlanan Dünya, gerçek konumunda ve evresiyle Ay, Ay'ın etki küresi ve Ay'a en yakın geçiş işareti.
+- **Kamera takibi:** Güneş / Dünya / Apophis / Ay'a kilitlenir. Fareyle döndür ve yakınlaştır.
 - **Değiştirilebilir parametreler** (⚙ Parametreler): her değişiklikte yörünge anında yeniden entegre edilir.
 
   | Parametre | Aralık | Etkisi |
@@ -69,10 +84,11 @@ Sayfa açıldığında görülen ekran. Simülasyon saati şu anki zamana kilitl
   | En yakın geçiş mesafesi rₚ | 1 000 – 1 000 000 km | R⊕'nin altına inerse çarpma: yer, saat ve çarpma hızı hesaplanır |
   | Sonsuzdaki hız v∞ | 0,5 – 30 km/s | Yaklaşma hızı; güneş merkezli yörüngeyi de değiştirir |
   | Çarpma parametresi açısı | 0 – 360° | Dünya'nın hangi tarafından geçtiği: önden geçerse enerji kaybeder, arkadan geçerse kazanır |
-  | Dünya kütlesi çarpanı | 0 – 10× | 0 = çekimsiz Dünya, yörünge hiç değişmez |
+  | Dünya kütlesi çarpanı | 0 – 10× | 0 = çekimsiz Dünya |
+  | Ay kütlesi çarpanı | 0 – 20× | 0 = Ay çekimi yok. Ay'ın etkisi sonuç tablosunda ayrıca hesaplanır |
 
-  Hazır senaryolar: *JPL tahmini, Ay mesafesi, GEO sınırı, Sıyırma, Çarpma, Çekimsiz Dünya.*
-- **Canlı göstergeler:** Uzaklık (km, Ay mesafesi, R⊕), göreli hız, altındaki coğrafi nokta, oskülatör yörünge elemanları (Dünya'nın Hill küresi içinde yer merkezli hiperbol, dışında güneş merkezli) ve yörünge sınıfı (Aten / Apollo / Amor / Atira).
+  Hazır senaryolar: *JPL tahmini, Ay mesafesi, GEO sınırı, Sıyırma, Çarpma, Aysız, Çekimsiz Dünya.*
+- **Canlı göstergeler:** Dünya'ya ve Ay'a uzaklık, göreli hız, altındaki coğrafi nokta, oskülatör yörünge elemanları (Dünya'nın Hill küresi içinde yer merkezli hiperbol, dışında güneş merkezli) ve yörünge sınıfı (Aten / Apollo / Amor / Atira).
 - **∑ Denklemler:** Kepler, vis-viva, N-cisim ve hiperbolik geçiş denklemleri, seçili parametrelerin sayısal değerleriyle (KaTeX).
 
 ## Çalıştırma
@@ -88,9 +104,10 @@ npm run build    # dist/
 
 | Bileşen | Yöntem |
 |---|---|
-| Dünya | Kepler yörüngesi, JPL Standish J2000 ortalama elemanları (`src/physics/ephemeris.ts`) |
+| Dünya | Dünya–Ay ağırlık merkezi için Kepler yörüngesi (JPL Standish J2000 elemanları), Dünya merkezi buradan `r⊕ = r_EMB − r☾⊕/82,3` ile bulunur (`src/physics/ephemeris.ts`) |
+| Ay | Meeus, *Astronomical Algorithms* Bölüm 47: ELP-2000/82'nin ana terimleri, ~10″ doğruluk (`src/physics/moon.ts`) |
 | Kepler denklemi | `M = E − e sin E`, Newton–Raphson (`src/physics/kepler.ts`) |
-| Apophis | `r̈ = −μ☉ r/|r|³ − μ⊕ (r−r⊕)/|r−r⊕|³ − μ⊕ r⊕/|r⊕|³`, Dormand–Prince RK5(4) uyarlamalı adım (`src/physics/integrator.ts`) |
+| Apophis | Güneş + Dünya + Ay çekimi: `r̈ = −μ☉ r/|r|³ − Σₖ μₖ [(r−rₖ)/|r−rₖ|³ + rₖ/|rₖ|³]`, k ∈ {⊕, ☾}. Dormand–Prince RK5(4), Dünya'ya ve Ay'a yaklaştıkça küçülen adım (`src/physics/integrator.ts`) |
 | Yakın geçiş | Yerberide hiperbolik geçişten başlangıç durumu: `e = 1 + rₚv∞²/μ⊕`, `sin(δ/2) = 1/e` (`src/physics/apophis.ts`) |
 | Dünya dönüşü | GMST ve ekliptik eğikliği ε (`src/physics/earthRotation.ts`) |
 
@@ -101,15 +118,19 @@ Başlangıç durumu yakın geçiş anında (2029-04-13 21:46 UTC) kurulur, orada
 | | a [AU] | e | i | Sınıf |
 |---|---|---|---|---|
 | Geçiş öncesi | 0,9226 | 0,193 | 3,34° | Aten |
-| Geçiş sonrası | 1,1030 | 0,191 | 2,22° | Apollo |
+| Geçiş sonrası | 1,1021 | 0,191 | 2,21° | Apollo |
 
-- En yakın mesafe 38 012 km, v∞ = 5,90 km/s. Asteroidin altındaki nokta Atlantik üzerinde (≈29°K, 44°B).
-- Testler ayrıca çekimsiz Dünya'da yörüngenin değişmediğini ve çarpma senaryosunda çarpma hızının √(v∞² + 2μ⊕/R⊕) olduğunu doğrular.
+- Dünya'ya en yakın mesafe 38 012 km, v∞ = 5,90 km/s. Asteroidin altındaki nokta Atlantik üzerinde (≈29°K, 44°B).
+- Ay'a en yakın mesafe 93 342 km, 14 Nisan 2029 14:26 UTC. Ay'ın geçiş sonrası a'ya etkisi ≈ −151 000 km.
+- Testler ayrıca şunları doğrular:
+  - Ay efemerisi Meeus'un örnek 47.a'sıyla uyumludur.
+  - Dünya ve Ay çekimi kapalıyken yörünge değişmez.
+  - Çarpma senaryosunda çarpma hızı √(v∞² + 2μ⊕/R⊕) olur.
 
 **Sınırlamalar:**
-- Bu bir eğitim modelidir. Diğer gezegenler, Ay'ın çekimi, Yarkovsky etkisi ve UTC/TDB farkı yok sayılmıştır.
+- Bu bir eğitim modelidir. Diğer gezegenler, Dünya'nın basıklığı (J2), Yarkovsky etkisi, nütasyon ve UTC/TDB farkı yok sayılmıştır.
 - Apophis'in elemanları JPL'den yaklaşık alınmıştır. Çarpma parametresi açısı, geçiş sonrası elemanlar JPL tahminine uyacak şekilde ayarlanmıştır.
-- Ay'ın konumu yalnızca görseldir. Cisim boyutları büyütülmüştür.
+- Güneş sistemi görünümünde cisim boyutları büyütülmüştür (Dünya yakını görünümünde Dünya ve Ay gerçek ölçektedir).
 
 ## Demo yayını (GitHub Pages)
 

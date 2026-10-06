@@ -30,9 +30,11 @@ export function Equations() {
       <p>Dünya'nın konumu bu denklemlerle (JPL Standish J2000 elemanları) hesaplanır.</p>
 
       <h2>2 · Apophis'in hareket denklemi</h2>
-      <p>Güneş merkezli çerçevede Güneş ve Dünya çekimi; son terim Güneş'in Dünya tarafından ivmelendirilmesinden gelen dolaylı terimdir:</p>
-      <Tex>{String.raw`\ddot{\mathbf{r}} = -\mu_\odot\frac{\mathbf{r}}{|\mathbf{r}|^3} - \mu_\oplus\frac{\mathbf{r}-\mathbf{r}_\oplus}{|\mathbf{r}-\mathbf{r}_\oplus|^3} - \mu_\oplus\frac{\mathbf{r}_\oplus}{|\mathbf{r}_\oplus|^3}`}</Tex>
-      <p>Uyarlamalı adımlı Dormand–Prince RK5(4) ile, Dünya'ya yaklaştıkça küçülen adımlarla ({tr.t.length.toLocaleString('tr-TR')} adım) entegre edilir.</p>
+      <p>Güneş merkezli çerçevede Güneş, Dünya ve Ay çekimi. Her cisim için ikinci terim, Güneş'in o cisim tarafından ivmelendirilmesinden gelen dolaylı terimdir:</p>
+      <Tex>{String.raw`\ddot{\mathbf{r}} = -\mu_\odot\frac{\mathbf{r}}{|\mathbf{r}|^3} - \sum_{k\,\in\,\{\oplus,\,\mathrm{Ay}\}} \mu_k\left(\frac{\mathbf{r}-\mathbf{r}_k}{|\mathbf{r}-\mathbf{r}_k|^3} + \frac{\mathbf{r}_k}{|\mathbf{r}_k|^3}\right)`}</Tex>
+      <p>Ay'ın konumu Meeus'un Ay teorisinden (ELP-2000/82'nin ana terimleri) gelir. Dünya'nın merkezi, Dünya–Ay ağırlık merkezinden Ay'ın ters yönüne kayar (~4 700 km):</p>
+      <Tex>{String.raw`\mathbf{r}_\oplus = \mathbf{r}_{\text{EMB}} - \frac{\mu_\mathrm{Ay}}{\mu_\oplus + \mu_\mathrm{Ay}}\,\mathbf{r}_{\mathrm{Ay}\oplus},\qquad \frac{\mu_\oplus}{\mu_\mathrm{Ay}} = 81{,}30`}</Tex>
+      <p>Uyarlamalı adımlı Dormand–Prince RK5(4) ile, Dünya'ya ve Ay'a yaklaştıkça küçülen adımlarla ({tr.t.length.toLocaleString('tr-TR')} adım) entegre edilir.</p>
 
       <h2>3 · Yakın geçiş: hiperbolik yörünge</h2>
       <p>Dünya'nın etki küresi içinde göreli hareket bir hiperboldür (değerler seçili parametrelerden):</p>

@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
-import { DEFAULT_PARAMS, type FlybyParams, osculating } from '../physics/apophis.ts'
-import { CLOSE_APPROACH_JD, EARTH_RADIUS_KM, GEO_RADIUS_KM, KM_S_PER_AU_DAY, MOON_DISTANCE_KM, jdToDate } from '../physics/constants.ts'
+import { useEffect, useMemo, useState } from 'react'
+import { DEFAULT_PARAMS, type FlybyParams, buildTrajectory, encounters, osculating } from '../physics/apophis.ts'
+import { AU_KM, CLOSE_APPROACH_JD, EARTH_RADIUS_KM, GEO_RADIUS_KM, KM_S_PER_AU_DAY, MOON_DISTANCE_KM, jdToDate } from '../physics/constants.ts'
 import { deg } from '../physics/kepler.ts'
 import { useSim } from '../store.ts'
 import { fmt, latLon, orbitClass } from './Hud.tsx'
@@ -50,6 +50,7 @@ const PRESETS: { label: string; p: Partial<FlybyParams> }[] = [
   { label: 'GEO sınırı', p: { rpKm: GEO_RADIUS_KM } },
   { label: 'Sıyırma (8 000 km)', p: { rpKm: 8000 } },
   { label: 'Çarpma', p: { rpKm: 3000 } },
+  { label: 'Aysız', p: { moonMassFactor: 0 } },
   { label: 'Çekimsiz Dünya', p: { earthMassFactor: 0 } },
 ]
 
@@ -62,7 +63,22 @@ export function Params() {
   const result = useMemo(() => {
     const pre = osculating(tr, CLOSE_APPROACH_JD - 60)
     const post = tr.impact ? null : osculating(tr, CLOSE_APPROACH_JD + 60)
-    return { pre, post }
+    return { pre, post, enc: encounters(tr) }
+  }, [tr])
+
+  // Ay'ın etkisi: aynı senaryo Ay çekimi olmadan. Kaydırıcı sürüklenirken hesabı geciktir.
+  const [moonEffect, setMoonEffect] = useState<{ daKm: number } | null>(null)
+  useEffect(() => {
+    setMoonEffect(null)
+    if (tr.impact || tr.params.moonMassFactor === 0) return
+    const id = setTimeout(() => {
+      const ref = buildTrajectory({ ...tr.params, moonMassFactor: 0 })
+      const aRef = osculating(ref, CLOSE_APPROACH_JD + 60).a
+      setMoonEffect({
+        daKm: (osculating(tr, CLOSE_APPROACH_JD + 60).a - aRef) * AU_KM,
+      })
+    }, 250)
+    return () => clearTimeout(id)
   }, [tr])
 
   return (
@@ -119,6 +135,17 @@ export function Params() {
         digits={2}
         onChange={(earthMassFactor) => setParams({ earthMassFactor })}
       />
+      <Slider
+        label="Ay kütlesi çarpanı"
+        value={params.moonMassFactor}
+        min={0}
+        max={20}
+        step={0.05}
+        unit="×"
+        digits={2}
+        onChange={(moonMassFactor) => setParams({ moonMassFactor })}
+        hint="0 = Ay çekimi yok. Ay, Dünya kütlesinin 1/81,3'ü kadardır."
+      />
 
       <h2>Sonuç</h2>
       <table>
@@ -127,6 +154,14 @@ export function Params() {
           <tr><th>Sapma açısı δ</th><td>{fmt(deg(f.deflection), 2)}°</td></tr>
           <tr><th>Yerberi hızı vₚ</th><td>{fmt(f.vp * KM_S_PER_AU_DAY, 2)} km/s</td></tr>
           <tr><th>|Δv☉| = 2v∞ sin(δ/2)</th><td>{fmt(2 * f.vInf * Math.sin(f.deflection / 2) * KM_S_PER_AU_DAY, 3)} km/s</td></tr>
+          <tr><th>Dünya'ya en yakın (sayısal)</th><td>{fmt(result.enc.earth.distKm)} km</td></tr>
+          <tr><th>Ay'a en yakın</th><td>{fmt(result.enc.moon.distKm)} km · {jdToDate(result.enc.moon.jd).toISOString().slice(5, 16).replace('T', ' ')}</td></tr>
+          {params.moonMassFactor > 0 && !tr.impact && (
+            <tr>
+              <th>Ay'ın etkisi (geçiş sonrası a)</th>
+              <td>{moonEffect ? `${moonEffect.daKm > 0 ? '+' : ''}${fmt(moonEffect.daKm)} km` : '…'}</td>
+            </tr>
+          )}
           <tr><th>Önce: a / e / i</th><td>{fmt(result.pre.a, 4)} AU / {fmt(result.pre.e, 3)} / {fmt(deg(result.pre.i), 2)}°</td></tr>
           {result.post ? (
             <>

@@ -1,4 +1,5 @@
-import { DEG, J2000, MU_SUN } from './constants.ts'
+import { DEG, EARTH_MOON_MASS_RATIO, J2000, MU_SUN } from './constants.ts'
+import { moonGeocentric } from './moon.ts'
 import { type Elements, type State, elementsToState } from './kepler.ts'
 import type { Vec3 } from './vec.ts'
 
@@ -17,26 +18,42 @@ export function earthElements(jd: number): Elements {
   return { a, e, i, node, peri: varpi - node, M: L - varpi }
 }
 
-export function earthState(jd: number): State {
+/** Dünya–Ay ağırlık merkezinin (EMB) güneş merkezli durumu. */
+export function embState(jd: number): State {
   return elementsToState(earthElements(jd), MU_SUN)
 }
 
-/**
- * Ay'ın yer merkezli konumu — yalnızca görselleştirme için
- * basitleştirilmiş ortalama yörünge (≈ birkaç derece doğruluk).
- */
-export function moonGeocentric(jd: number): Vec3 {
-  const d = jd - J2000
-  const L = (218.316 + 13.176396 * d) * DEG // ortalama boylam
-  const M = (134.963 + 13.064993 * d) * DEG // ortalama anomali
-  const F = (93.272 + 13.22935 * d) * DEG // enlem argümanı
-  const lon = L + 6.289 * DEG * Math.sin(M)
-  const lat = 5.128 * DEG * Math.sin(F)
-  const distKm = 385001 - 20905 * Math.cos(M)
-  const distAu = distKm / 149597870.7
-  return [
-    distAu * Math.cos(lat) * Math.cos(lon),
-    distAu * Math.cos(lat) * Math.sin(lon),
-    distAu * Math.sin(lat),
-  ]
+/** Dünya merkezinin EMB'den kayması: r⊕ = r_EMB − μ☾/(μ⊕+μ☾) · r☾⊕ */
+const MOON_FRACTION = 1 / (1 + EARTH_MOON_MASS_RATIO)
+const DT = 0.01 // Ay hızı için merkezi fark adımı [gün]
+
+/** Dünya merkezinin güneş merkezli konumu ve hızı (Ay'ın yarattığı yalpalama dahil). */
+export function earthState(jd: number): State {
+  const emb = embState(jd)
+  const m = moonGeocentric(jd)
+  const m1 = moonGeocentric(jd + DT), m0 = moonGeocentric(jd - DT)
+  return {
+    r: [emb.r[0] - MOON_FRACTION * m[0], emb.r[1] - MOON_FRACTION * m[1], emb.r[2] - MOON_FRACTION * m[2]],
+    v: [
+      emb.v[0] - (MOON_FRACTION * (m1[0] - m0[0])) / (2 * DT),
+      emb.v[1] - (MOON_FRACTION * (m1[1] - m0[1])) / (2 * DT),
+      emb.v[2] - (MOON_FRACTION * (m1[2] - m0[2])) / (2 * DT),
+    ],
+  }
 }
+
+/** Entegrasyon için: Dünya ve Ay'ın güneş merkezli konumları (tek Ay hesabıyla). */
+let cacheJd = NaN
+let cache: { earth: Vec3; moon: Vec3 } = { earth: [0, 0, 0], moon: [0, 0, 0] }
+export function earthMoonPositions(jd: number): { earth: Vec3; moon: Vec3 } {
+  // Aynı an için art arda çağrılar (adım kontrolü + türev) tek hesap yapar
+  if (jd === cacheJd) return cache
+  const emb = embState(jd).r
+  const m = moonGeocentric(jd)
+  const earth: Vec3 = [emb[0] - MOON_FRACTION * m[0], emb[1] - MOON_FRACTION * m[1], emb[2] - MOON_FRACTION * m[2]]
+  cacheJd = jd
+  cache = { earth, moon: [earth[0] + m[0], earth[1] + m[1], earth[2] + m[2]] }
+  return cache
+}
+
+export { moonGeocentric }

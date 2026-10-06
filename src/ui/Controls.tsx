@@ -21,12 +21,12 @@ export function SimClock() {
   return null
 }
 
-const FOLLOW_LABELS: Record<Follow, string> = { sun: 'Güneş', earth: 'Dünya', apophis: 'Apophis' }
+const FOLLOW_LABELS: Record<Follow, string> = { sun: 'Güneş', earth: 'Dünya', apophis: 'Apophis', moon: 'Ay' }
 
 export function Controls() {
   const { jd, playing, rate, reverse, live, view, follow, trajectory: tr } = useSim()
   const { setJd, setPlaying, setRate, setReverse, setView, setFollow, goLive, jumpTo } = useSim.getState()
-  const followOptions: Follow[] = view === 'helio' ? ['sun', 'earth', 'apophis'] : ['earth', 'apophis']
+  const followOptions: Follow[] = view === 'helio' ? ['sun', 'earth', 'apophis'] : ['earth', 'apophis', 'moon']
   const pct = (t: number) => `${((t - tr.start) / (tr.end - tr.start)) * 100}%`
   const now = nowJD()
 

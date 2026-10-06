@@ -1,7 +1,7 @@
 import { sampleTrajectory } from '../physics/apophis.ts'
 import { AU_KM, CLOSE_APPROACH_JD, EARTH_RADIUS_KM, KM_S_PER_AU_DAY, MU_SUN, jdToDate } from '../physics/constants.ts'
 import { subPoint } from '../physics/earthRotation.ts'
-import { earthState } from '../physics/ephemeris.ts'
+import { earthState, moonGeocentric } from '../physics/ephemeris.ts'
 import { deg, stateToElements } from '../physics/kepler.ts'
 import { norm, sub } from '../physics/vec.ts'
 import { REALTIME, useSim } from '../store.ts'
@@ -65,6 +65,7 @@ export function Hud() {
               )}
               <tr><th>Dünya'ya uzaklık</th><td>{dKm < 2e6 ? `${fmt(dKm)} km` : `${fmt(dAu, 4)} AU`}</td></tr>
               <tr><th></th><td className="dim">{fmt(dKm / LD_KM, 2)} Ay mesafesi · {fmt(dKm / EARTH_RADIUS_KM, 1)} R⊕</td></tr>
+              {dKm < 3e6 && <tr><th>Ay'a uzaklık</th><td>{fmt(norm(sub(rel.r, moonGeocentric(jd))) * AU_KM)} km</td></tr>}
               <tr><th>Göreli hız</th><td>{fmt(vRel, 2)} km/s</td></tr>
               <tr><th>Güneş'e uzaklık</th><td>{fmt(norm(ast.r), 4)} AU</td></tr>
               {dKm < 400000 && <tr><th>Altındaki nokta</th><td>{latLon(sp.lat, sp.lon)}</td></tr>}

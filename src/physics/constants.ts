@@ -8,6 +8,11 @@ export const MU_SUN = GAUSS_K * GAUSS_K
 export const SUN_EARTH_MASS_RATIO = 332946.0487
 /** Dünya çekim parametresi μ⊕ [AU³/gün²] */
 export const MU_EARTH = MU_SUN / SUN_EARTH_MASS_RATIO
+/** Dünya / Ay kütle oranı (IAU 2009) */
+export const EARTH_MOON_MASS_RATIO = 81.30057
+/** Ay çekim parametresi μ☾ [AU³/gün²] */
+export const MU_MOON = MU_EARTH / EARTH_MOON_MASS_RATIO
+export const MOON_RADIUS_KM = 1737.4
 
 export const AU_KM = 149597870.7
 export const DAY_S = 86400

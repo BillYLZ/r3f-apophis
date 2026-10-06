@@ -28,7 +28,8 @@ export default function App() {
           <>
             <span className="sw" style={{ background: '#ff9b42' }} /> Yer merkezli yol (±2,5 gün)
             <span className="sw" style={{ background: '#7a8cff' }} /> GEO kuşağı
-            <span className="sw" style={{ background: '#8a8f9c' }} /> Ay yörüngesi
+            <span className="sw" style={{ background: '#8a8f9c' }} /> Ay'ın yolu (±14 gün)
+            <span className="sw" style={{ background: '#c8ccd6' }} /> Ay'a en yakın geçiş · gri küre: Ay'ın etki küresi
           </>
         )}
         <span className="dim"> · Cisim boyutları büyütülmüştür · Fare: döndür / yakınlaştır</span>

@@ -2,8 +2,8 @@ import { Line, OrbitControls, Stars, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { type Impact, type Trajectory, sampleTrajectory } from '../physics/apophis.ts'
-import { AU_KM, CLOSE_APPROACH_JD, DEG, EARTH_RADIUS_KM, GEO_RADIUS_KM } from '../physics/constants.ts'
+import { type Impact, type Trajectory, encounters, sampleTrajectory } from '../physics/apophis.ts'
+import { AU_KM, CLOSE_APPROACH_JD, DEG, EARTH_RADIUS_KM, GEO_RADIUS_KM, MOON_RADIUS_KM } from '../physics/constants.ts'
 import { gmst, OBLIQUITY } from '../physics/earthRotation.ts'
 import { earthState, moonGeocentric } from '../physics/ephemeris.ts'
 import { type Vec3, scale, sub } from '../physics/vec.ts'
@@ -16,6 +16,8 @@ import { useFollow } from './useFollow.ts'
 const KM = 1 / 10000
 const S = AU_KM * KM
 const R_EARTH = EARTH_RADIUS_KM * KM
+/** Ay'ın Dünya'ya göre etki küresi: a☾ (μ☾/μ⊕)^(2/5) ≈ 66 100 km */
+const MOON_SOI_KM = 66100
 
 function geocentricApophis(tr: Trajectory, jd: number): Vec3 {
   return sub(sampleTrajectory(tr, jd).r, earthState(jd).r)
@@ -87,17 +89,27 @@ export function GeoScene() {
     return pts
   }, [trajectory])
 
+  // Ay'ın yolu: içinde bulunulan günün ±14 günü (gün değiştikçe yeniden çizilir)
+  const day = useSim((s) => Math.floor(s.jd))
   const moonOrbit = useMemo(() => {
     const pts: THREE.Vector3[] = []
-    for (let t = CLOSE_APPROACH_JD - 14; t <= CLOSE_APPROACH_JD + 14; t += 0.1) pts.push(toThree(moonGeocentric(t), S))
+    for (let t = day - 14; t <= day + 14; t += 0.1) pts.push(toThree(moonGeocentric(t), S))
     return pts
-  }, [])
+  }, [day])
+
+  // Ay'a en yakın geçiş: Apophis'in o andaki noktası, Ay'ın o andaki konumu ve aradaki çizgi
+  const moonEncounter = useMemo(() => {
+    const m = encounters(trajectory).moon
+    const apo = toThree(geocentricApophis(trajectory, m.jd), S)
+    const moon = toThree(moonGeocentric(m.jd), S)
+    return { ...m, apo, moon, mid: apo.clone().lerp(moon, 0.5) }
+  }, [trajectory])
 
   const apoRef = useRef<THREE.Group>(null)
   const moonRef = useRef<THREE.Group>(null)
   const sunRef = useRef<THREE.DirectionalLight>(null)
   const origin = useMemo(() => new THREE.Vector3(), [])
-  const follow = useFollow({ earth: 21, apophis: 2 })
+  const follow = useFollow({ earth: 21, apophis: 2, moon: 5 })
 
   useFrame(() => {
     const { jd, trajectory: tr, follow: target } = useSim.getState()
@@ -105,7 +117,7 @@ export function GeoScene() {
     apoRef.current!.visible = !tr.impact || jd < tr.impact.jd
     toThree(moonGeocentric(jd), S, moonRef.current!.position)
     toThree(scale(earthState(jd).r, -1), 100, sunRef.current!.position)
-    follow(target === 'apophis' ? apoRef.current!.position : origin)
+    follow(target === 'apophis' ? apoRef.current!.position : target === 'moon' ? moonRef.current!.position : origin)
   })
 
   return (
@@ -142,10 +154,33 @@ export function GeoScene() {
 
       <group ref={moonRef}>
         <mesh>
-          <sphereGeometry args={[1737 * KM, 32, 32]} />
-          <meshStandardMaterial color="#b8b8b8" />
+          <sphereGeometry args={[MOON_RADIUS_KM * KM, 48, 48]} />
+          <meshStandardMaterial color="#b8b8b8" roughness={1} />
+        </mesh>
+        {/* Ay'ın etki küresi */}
+        <mesh>
+          <sphereGeometry args={[MOON_SOI_KM * KM, 48, 32]} />
+          <meshBasicMaterial color="#9aa3b5" transparent opacity={0.07} depthWrite={false} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[MOON_SOI_KM * KM - 0.02, MOON_SOI_KM * KM + 0.02, 96]} />
+          <meshBasicMaterial color="#9aa3b5" transparent opacity={0.35} side={THREE.DoubleSide} />
         </mesh>
         <Label text="Ay" color="#c8ccd6" />
+      </group>
+
+      {/* Ay'a en yakın geçiş anı */}
+      <Line points={[moonEncounter.apo, moonEncounter.moon]} color="#c8ccd6" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} />
+      <mesh position={moonEncounter.apo}>
+        <sphereGeometry args={[0.06, 12, 12]} />
+        <meshBasicMaterial color="#c8ccd6" />
+      </mesh>
+      <mesh position={moonEncounter.moon}>
+        <sphereGeometry args={[MOON_RADIUS_KM * KM, 24, 24]} />
+        <meshBasicMaterial color="#c8ccd6" transparent opacity={0.25} />
+      </mesh>
+      <group position={moonEncounter.mid}>
+        <Label text={`Ay'a en yakın: ${Math.round(moonEncounter.distKm).toLocaleString('tr-TR')} km`} color="#c8ccd6" size={0.019} offset={-2.2} />
       </group>
 
       <group ref={apoRef}>

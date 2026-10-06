@@ -3,7 +3,7 @@ import { DEFAULT_PARAMS, type FlybyParams, type Trajectory, buildTrajectory } fr
 import { dateToJD } from './physics/constants.ts'
 
 export type View = 'helio' | 'geo'
-export type Follow = 'sun' | 'earth' | 'apophis'
+export type Follow = 'sun' | 'earth' | 'apophis' | 'moon'
 
 /** Gerçek zaman: 1 saniyede 1 saniye [gün/s] */
 export const REALTIME = 1 / 86400
@@ -76,7 +76,7 @@ export const useSim = create<SimState>((set, get) => {
     setPlaying: (playing) => set({ playing, live: false }),
     setRate: (rate) => set({ rate, live: false }),
     setReverse: (reverse) => set({ reverse, live: false }),
-    setView: (view) => set({ view, follow: view === 'geo' ? 'earth' : get().follow }),
+    setView: (view) => set({ view, follow: view === 'geo' ? 'earth' : get().follow === 'moon' ? 'earth' : get().follow }),
     setFollow: (follow) => set({ follow }),
     setParams: (p) => {
       set({ params: { ...get().params, ...p } })

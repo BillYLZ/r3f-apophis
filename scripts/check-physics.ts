@@ -1,6 +1,7 @@
 import { AU_KM, CLOSE_APPROACH_JD, KM_S_PER_AU_DAY } from '../src/physics/constants.ts'
 import { earthState } from '../src/physics/ephemeris.ts'
-import { DEFAULT_PARAMS, buildTrajectory, osculating, sampleTrajectory, type Trajectory } from '../src/physics/apophis.ts'
+import { DEFAULT_PARAMS, buildTrajectory, encounters, osculating, sampleTrajectory, type Trajectory } from '../src/physics/apophis.ts'
+import { moonEclipticOfDate } from '../src/physics/moon.ts'
 import { subPoint } from '../src/physics/earthRotation.ts'
 import { deg } from '../src/physics/kepler.ts'
 import { norm, sub } from '../src/physics/vec.ts'
@@ -38,12 +39,24 @@ check(tr.impact === null, 'çarpma yok')
 const sp = subPoint(sub(sampleTrajectory(tr, CLOSE_APPROACH_JD).r, earthState(CLOSE_APPROACH_JD).r), CLOSE_APPROACH_JD)
 console.log(`  alt nokta: enlem ${sp.lat.toFixed(1)}°, boylam ${sp.lon.toFixed(1)}°`)
 
-// 2) Dünya çekimi kapalı: yörünge değişmemeli
-const free = buildTrajectory({ ...DEFAULT_PARAMS, earthMassFactor: 0 })
+// 2) Dünya ve Ay çekimi kapalı: yörünge değişmemeli
+const free = buildTrajectory({ ...DEFAULT_PARAMS, earthMassFactor: 0, moonMassFactor: 0 })
 const fpre = osculating(free, CLOSE_APPROACH_JD - 60), fpost = osculating(free, CLOSE_APPROACH_JD + 60)
-check(Math.abs(fpre.a - fpost.a) < 1e-6, `μ⊕ = 0: a değişmez (${fpre.a.toFixed(5)} → ${fpost.a.toFixed(5)})`)
+check(Math.abs(fpre.a - fpost.a) < 1e-6, `μ⊕ = μ☾ = 0: a değişmez (${fpre.a.toFixed(5)} → ${fpost.a.toFixed(5)})`)
 
-// 3) Çarpma senaryosu
+// 3) Ay: efemeris ve çekim etkisi
+const mo = moonEclipticOfDate(2448724.5) // Meeus örnek 47.a
+check(Math.abs(mo.lon - 133.162655) < 0.001 && Math.abs(mo.lat + 3.229126) < 0.01 && Math.abs(mo.distKm - 368409.7) < 50,
+  `Ay efemerisi Meeus 47.a ile uyumlu (λ=${mo.lon.toFixed(5)}°, β=${mo.lat.toFixed(4)}°, Δ=${mo.distKm.toFixed(1)} km)`)
+const enc = encounters(tr)
+console.log(`  Ay'a en yakın: ${enc.moon.distKm.toFixed(0)} km, ${new Date((enc.moon.jd - 2440587.5) * 864e5).toISOString().slice(0, 16)} UTC`)
+const noMoon = buildTrajectory({ ...DEFAULT_PARAMS, moonMassFactor: 0 })
+const postNoMoon = osculating(noMoon, CLOSE_APPROACH_JD + 60)
+const da = (post.a - postNoMoon.a) * AU_KM
+console.log(`  Ay'ın geçiş sonrası a'ya etkisi: ${da.toFixed(0)} km`)
+check(Math.abs(da) > 1 && Math.abs(da) < 1e6, 'Ay çekimi yörüngeyi ölçülebilir ama küçük ölçüde değiştirir')
+
+// 4) Çarpma senaryosu
 const hit = buildTrajectory({ ...DEFAULT_PARAMS, rpKm: 3000 })
 check(hit.impact !== null && hit.impact.jd < CLOSE_APPROACH_JD, 'r_p = 3000 km: çarpma algılandı')
 if (hit.impact) {
