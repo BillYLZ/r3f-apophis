@@ -2,13 +2,51 @@
 
 **99942 Apophis**'in 13 Nisan 2029'da Dünya'ya yakın geçişinin, yörünge mekaniği denklemleriyle hesaplanan, parametreleri değiştirilebilen gerçek zamanlı 3B simülasyonu (React Three Fiber).
 
-### ▶ [Canlı demo: billylz.github.io/r3f-apophis](https://billylz.github.io/r3f-apophis/)
+## Demo
+
+- **▶ [Demoyu aç (claude.ai)](https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m)** — derlenmiş uygulamanın tamamı, tarayıcıda kurulum gerektirmeden çalışır. Bağlantı sahibi paylaşana kadar özeldir (sayfadaki **Share** menüsünden herkese açılabilir).
+- **GitHub Pages:** [billylz.github.io/r3f-apophis](https://billylz.github.io/r3f-apophis/) — depo herkese açık yapıldıktan ve Pages etkinleştirildikten sonra çalışır (bkz. [Demo yayını](#demo-yayını-github-pages)).
+
+## Ekran görüntüleri
+
+### 1 · Canlı mod: Güneş sistemi görünümü
 
 ![Canlı mod — Güneş sistemi görünümü](docs/canli-gunes-sistemi.png)
 
-| Yakın geçiş (GEO kuşağının içinden) | "Ya çarparsa?" senaryosu |
-|---|---|
-| ![Yakın geçiş](docs/yakin-gecis.png) | ![Çarpma senaryosu](docs/carpma-senaryosu.png) |
+Sayfa açıldığında görülen ekran. Simülasyon saati şu anki zamana kilitlidir (başlıkta kırmızı **● CANLI** rozeti).
+
+- **Ortada** Güneş, çevresindeki ızgara ekliptik düzlemidir (1 halka = 0,25 AU).
+- **Mavi elips** Dünya'nın yörüngesi.
+- **Turuncu kesikli elips** Apophis'in 2029 öncesi yörüngesi: a ≈ 0,92 AU, Dünya yörüngesinin çoğunlukla içinde (Aten sınıfı).
+- **Turkuaz kesikli elips** 2029 geçişinden sonraki yörüngesi: a ≈ 1,10 AU, artık büyük kısmı Dünya yörüngesinin dışında (Apollo sınıfı).
+- **Açık sarı çizgi** Apophis'in son 300 günde izlediği yol.
+- **Sol üst panel** anlık değerler: tarih ve saat, Dünya'ya uzaklık (AU, Ay mesafesi ve Dünya yarıçapı cinsinden), göreli hız, Güneş'e uzaklık ve o anki yörünge elemanları (a, e, i, periyot, sınıf).
+- **Sağ panel** (⚙ Parametreler) senaryoyu değiştiren kaydırıcılar ve hazır senaryo düğmeleri; altta seçili senaryonun sonucu.
+- **Alt çubuk** zaman kontrolü: ileri/geri, oynat/durdur, hız (1× gerçek zamandan 30 gün/s'ye), **● Şimdi**, 13 Nisan 2029'a atlama, görünüm seçimi ve kamera takibi. Zaman çubuğunda kırmızı ▲ bugünü, turuncu ▲ 2029 geçişini gösterir.
+
+### 2 · Yakın geçiş: Dünya yakını görünümü
+
+![Yakın geçiş](docs/yakin-gecis.png)
+
+13 Nisan 2029, en yakın geçişten yaklaşık 43 dakika önce (T − 0 sa 43 dk).
+
+- **Ortada** Dünya, gerçek boyutta ve gerçek saate göre dönerken; Güneş'in aydınlattığı taraf parlak, gece tarafı karanlık.
+- **Mor halka** yer eşzamanlı (GEO) uyduların bulunduğu 35 786 km yükseklikteki kuşak.
+- **Turuncu çizgi** Apophis'in Dünya'ya göre yolu (geçişin ±2,5 günü). Asteroit GEO kuşağının **içinden** geçer ve Dünya'nın çekimiyle yaklaşık 27° bükülür (hiperbolik yörünge).
+- **Sol panel** bu anda: Dünya merkezine 41 796 km, göreli hız 7,34 km/s, asteroidin tam altındaki nokta (enlem/boylam). Dünya'ya yakın olduğu için yörünge elemanları yer merkezli hiperbol olarak verilir: e ≈ 4,32 (e > 1 → kapalı olmayan, tek geçişlik yörünge).
+- **Sağ panel** (∑ Denklemler) kullanılan denklemleri seçili senaryonun sayılarıyla gösterir: Kepler denklemi, vis-viva, Güneş + Dünya çekimli hareket denklemi ve hiperbolik geçiş formülleri (e = 4,320, vₚ = 7,47 km/s, δ = 26,8°).
+
+### 3 · "Ya çarparsa?" senaryosu
+
+![Çarpma senaryosu](docs/carpma-senaryosu.png)
+
+**Çarpma** hazır senaryosu: en yakın geçiş mesafesi 3 000 km'ye, yani Dünya yarıçapının (6 378 km) altına indirildi. Gerçekte böyle bir durum **beklenmiyor**; bu yalnızca modelin ne yaptığını gösteren bir "ya olsaydı" denemesidir.
+
+- **Kırmızı çizgi** asteroidin yolu; Dünya yüzeyine değdiği anda biter.
+- **Kırmızı "Çarpma" işareti** dönen Dünya üzerinde çarpma noktası.
+- **Sol panel** çarpma yeri (1,3°K 0,6°B — Gine Körfezi), saati (21:38:12 UTC) ve çarpma hızı (12,64 km/s ≈ √(v∞² + 2μ⊕/R⊕)).
+- **Sağ panel** kaydırıcının altında "Dünya yüzeyinin altında → çarpma" uyarısı; sonuç tablosunda geçiş sonrası yörünge yerine çarpma bilgisi.
+- **Zaman çubuğu** çarpma anında biter (sağda "çarpma ▲").
 
 ## Özellikler
 
@@ -71,6 +109,10 @@ Başlangıç durumu yakın geçiş anında (2029-04-13 21:46 UTC) kurulur, orada
 
 `.github/workflows/pages.yml` her push'ta testleri çalıştırır ve projeyi derler. Varsayılan dala yapılan push'larda `dist/` klasörünü GitHub Pages'e yayınlar.
 
-İlk kurulumda bir kez **Settings → Pages → Build and deployment → Source: GitHub Actions** seçilmelidir.
+Pages'in çalışması için:
+
+1. **Depo herkese açık olmalı** (Settings → General → Danger Zone → Change visibility → Public). Ücretsiz GitHub hesaplarında Pages gizli depolarda çalışmaz; gizli depo için GitHub Pro gerekir.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions** seçilmeli.
+3. Actions sekmesinde son çalıştırmada **Re-run jobs**.
 
 Dünya dokusu: NASA Blue Marble (kamu malı).
