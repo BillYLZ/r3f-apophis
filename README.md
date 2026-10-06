@@ -1,5 +1,11 @@
 # r3f-apophis
 
+<p align="center">
+  <a href="https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m"><img alt="Canlı demoyu aç" src="https://img.shields.io/badge/%E2%96%B6%20CANLI%20DEMO-A%C3%A7-ff9b42?style=for-the-badge"></a>
+</p>
+
+<p align="center"><b>Demo:</b> <a href="https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m">https://claude.ai/artifact/9iNL3hgMrqnDQaqthZnd7m</a></p>
+
 **99942 Apophis**'in 13 Nisan 2029'da Dünya'ya yakın geçişinin, yörünge mekaniği denklemleriyle hesaplanan, parametreleri değiştirilebilen gerçek zamanlı 3B simülasyonu (React Three Fiber).
 
 ## Demo
